@@ -1,0 +1,4 @@
+interface:
+  display_name: "인페인트 스킬"
+  short_description: "사진 위에 마스크를 그리고 인페인트 파일을 준비합니다"
+  default_prompt: "Use $inpaint-studio to open the inpainting mask editor."
