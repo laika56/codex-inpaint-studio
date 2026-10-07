@@ -138,7 +138,7 @@
     });
     const stage=root.querySelector('#ip-stage'); ['dragenter','dragover'].forEach(n=>stage.addEventListener(n,e=>{e.preventDefault();})); stage.addEventListener('drop',e=>{e.preventDefault();loadFile(e.dataTransfer.files[0]);});
     document.addEventListener('paste',e=>{ const f=[...e.clipboardData.items].find(i=>i.type.startsWith('image/'))?.getAsFile(); if(f)loadFile(f); });
-    document.addEventListener('keydown',e=>{ if(e.key==='Escape'){e.preventDefault();cancelCurrentSelection();} if(e.key==='Enter'&&tool==='polygon'&&polygon.length>=3){e.preventDefault();finishPolygon();} });
+    document.addEventListener('keydown',e=>{ const t=e.target; if(e.isComposing||(t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))))return; if(e.key==='Escape'){e.preventDefault();cancelCurrentSelection();} if(e.key==='Enter'&&tool==='polygon'&&polygon.length>=3){e.preventDefault();finishPolygon();} });
     const tol=()=>{const r=canvas.getBoundingClientRect();return 16*canvas.width/r.width;};   // 화면 16px 를 캔버스 px 로
     root.querySelector('#ip-close').addEventListener('click',()=>{if(polygon.length<3){status.textContent='점을 셋 이상 찍은 뒤 닫습니다.';return;}finishPolygon();});
     update();
