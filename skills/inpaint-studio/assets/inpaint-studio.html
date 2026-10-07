@@ -1,18 +1,18 @@
 <div id="inpaint-studio" aria-label="인페인트 마스크 편집기">
   <style>
-    #inpaint-studio { display:grid; gap:12px; color:var(--foreground); }
+    #inpaint-studio { display:grid; gap:12px; color:var(--foreground,#111); }
     #inpaint-studio .toolbar { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:end; }
     #inpaint-studio .group { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
     #inpaint-studio .form-label { margin:0; }
     #inpaint-studio .size-control { min-width:170px; flex:1; }
     #inpaint-studio .size-line { display:flex; justify-content:space-between; align-items:center; }
-    #inpaint-studio .stage { position:relative; min-height:360px; padding:0; overflow:hidden; touch-action:none; display:grid; place-items:center; background:var(--muted); }
+    #inpaint-studio .stage { position:relative; min-height:360px; padding:0; overflow:hidden; touch-action:none; display:grid; place-items:center; background:var(--muted,#f3f4f6); }
     #inpaint-studio canvas { display:block; max-width:100%; width:auto; height:auto; cursor:crosshair; }
-    #inpaint-studio .empty { position:absolute; inset:0; display:grid; place-items:center; text-align:center; padding:28px; color:var(--muted-foreground); pointer-events:none; }
+    #inpaint-studio .empty { position:absolute; inset:0; display:grid; place-items:center; text-align:center; padding:28px; color:var(--muted-foreground,#666); pointer-events:none; }
     #inpaint-studio .empty[hidden] { display:none !important; }
-    #inpaint-studio .empty strong { display:block; color:var(--foreground); font-weight:500; margin-bottom:4px; }
-    #inpaint-studio .status { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; color:var(--muted-foreground); }
-    #inpaint-studio .color-dot { inline-size:18px; block-size:18px; border-radius:50%; border:1px solid var(--border); display:inline-block; vertical-align:middle; background:var(--mask-color); }
+    #inpaint-studio .empty strong { display:block; color:var(--foreground,#111); font-weight:500; margin-bottom:4px; }
+    #inpaint-studio .status { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; color:var(--muted-foreground,#666); }
+    #inpaint-studio .color-dot { inline-size:18px; block-size:18px; border-radius:50%; border:1px solid var(--border,#d4d4d8); display:inline-block; vertical-align:middle; background:var(--mask-color); }
     #inpaint-studio .actions { display:flex; flex-wrap:wrap; gap:6px; margin-left:auto; }
     @media (max-width:520px) { #inpaint-studio .stage { min-height:280px; } #inpaint-studio .actions { margin-left:0; width:100%; } }
   </style>
@@ -45,6 +45,7 @@
     <div class="group">
       <button id="ip-undo" class="btn" type="button" disabled>실행 취소</button>
       <button id="ip-clear" class="btn" type="button" disabled>마스크 지우기</button>
+      <button id="ip-close" class="btn" type="button">다각형 닫기</button>
     </div>
     <div class="actions">
       <button id="ip-mask" class="btn" type="button" disabled>마스크 PNG</button>
@@ -57,7 +58,7 @@
     <canvas id="ip-canvas" role="img" aria-label="사진 위에 선택 영역을 그리는 캔버스"></canvas>
     <div id="ip-empty" class="empty"><div><strong>여기에 사진을 놓으세요</strong><span>파일 선택 · 드래그 앤 드롭 · 붙여넣기 지원</span></div></div>
   </div>
-  <div class="status text-small"><span id="ip-status">이미지 없음</span><span>색칠된 부분이 수정 대상입니다</span></div>
+  <div class="status text-small"><span id="ip-status">이미지 없음 · v2 2026-10-06</span><span>색칠된 부분이 수정 대상입니다</span></div>
 
   <script>
   (() => {
@@ -78,7 +79,7 @@
     const image = new Image();
     const mask = document.createElement('canvas');
     const mctx = mask.getContext('2d');
-    let loaded = false, drawing = false, tool = 'rect', start = null, last = null, polygon = [], history = [], fileName = 'image';
+    let loaded = false, drawing = false, tool = 'rect', start = null, last = null, polygon = [], history = [], fileName = 'image', lastDown = {t:-1e9,x:0,y:0};
 
     const point = e => { const r=canvas.getBoundingClientRect(); return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height}; };
     const color = (alpha=.55) => { const h=colorInput.value; const n=parseInt(h.slice(1),16); return `rgba(${n>>16},${(n>>8)&255},${n&255},${alpha})`; };
@@ -95,7 +96,7 @@
     }
     function snapshot() { history.push(mctx.getImageData(0,0,mask.width,mask.height)); if(history.length>30) history.shift(); update(); }
     function update() { undoBtn.disabled=!history.length; clearBtn.disabled=mask.width===0; [maskBtn,previewBtn,sendBtn].forEach(b=>b.disabled=!loaded); }
-    function paintLine(a,b,erase=false) { mctx.save(); mctx.globalCompositeOperation=erase?'destination-out':'source-over'; mctx.strokeStyle=color(); mctx.lineWidth=+sizeInput.value; mctx.lineCap='round'; mctx.lineJoin='round'; mctx.beginPath(); mctx.moveTo(a.x,a.y); mctx.lineTo(b.x,b.y); mctx.stroke(); mctx.restore(); }
+    function paintLine(a,b,erase=false) { mctx.save(); mctx.globalCompositeOperation=erase?'destination-out':'source-over'; mctx.strokeStyle=erase?'rgba(0,0,0,1)':color(); mctx.lineWidth=+sizeInput.value; mctx.lineCap='round'; mctx.lineJoin='round'; mctx.beginPath(); mctx.moveTo(a.x,a.y); mctx.lineTo(b.x,b.y); mctx.stroke(); mctx.restore(); }
     function loadFile(file) { if(!file || !file.type.startsWith('image/')) return; const url=URL.createObjectURL(file); image.onload=()=>{ const max=1800, scale=Math.min(1,max/Math.max(image.naturalWidth,image.naturalHeight)); canvas.width=mask.width=Math.round(image.naturalWidth*scale); canvas.height=mask.height=Math.round(image.naturalHeight*scale); mctx.clearRect(0,0,mask.width,mask.height); history=[]; loaded=true; fileName=(file.name||'image').replace(/\.[^.]+$/,''); empty.hidden=true; status.textContent=`${file.name||'붙여넣은 이미지'} · ${image.naturalWidth}×${image.naturalHeight}`; redraw(); update(); URL.revokeObjectURL(url); }; image.src=url; }
     function download(c,suffix) { const a=document.createElement('a'); a.download=`${fileName}-${suffix}.png`; a.href=c.toDataURL('image/png'); a.click(); }
     function markedCanvas() { const out=document.createElement('canvas'); out.width=canvas.width; out.height=canvas.height; out.getContext('2d').drawImage(canvas,0,0); return out; }
@@ -105,7 +106,7 @@
       const blob=await canvasBlob(c);
       await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
     }
-    function exportMask() { const out=document.createElement('canvas'); out.width=mask.width; out.height=mask.height; const o=out.getContext('2d'); o.fillStyle='#000'; o.fillRect(0,0,out.width,out.height); o.globalCompositeOperation='source-over'; const data=mctx.getImageData(0,0,mask.width,mask.height), d=data.data; for(let i=0;i<d.length;i+=4){ d[i]=d[i+1]=d[i+2]=d[i+3]; d[i+3]=255; } o.putImageData(data,0,0); return out; }
+    function exportMask() { const out=document.createElement('canvas'); out.width=mask.width; out.height=mask.height; const o=out.getContext('2d'); o.fillStyle='#000'; o.fillRect(0,0,out.width,out.height); o.globalCompositeOperation='source-over'; const data=mctx.getImageData(0,0,mask.width,mask.height), d=data.data; for(let i=0;i<d.length;i+=4){ d[i]=d[i+1]=d[i+2]=d[i+3]>0?255:0; d[i+3]=255; } o.putImageData(data,0,0); return out; }
     function finishPolygon() { if(polygon.length<3)return; mctx.save();mctx.fillStyle=color();mctx.beginPath();mctx.moveTo(polygon[0].x,polygon[0].y);polygon.slice(1).forEach(q=>mctx.lineTo(q.x,q.y));mctx.closePath();mctx.fill();mctx.restore();polygon=[];start=null;redraw();update();status.textContent='다각형 선택이 닫혔습니다.'; }
     function cancelCurrentSelection() { if(polygon.length&&history.length)history.pop(); polygon=[];start=null;drawing=false;redraw();update();status.textContent=loaded?'현재 선택이 취소되었습니다.':'이미지 없음'; }
     function applyCrop(a,b) { const x=Math.max(0,Math.min(a.x,b.x)), y=Math.max(0,Math.min(a.y,b.y)), w=Math.min(canvas.width-x,Math.abs(b.x-a.x)), h=Math.min(canvas.height-y,Math.abs(b.y-a.y)); if(w<12||h<12){cancelCurrentSelection();status.textContent='자를 영역을 조금 더 크게 드래그해 주세요.';return;} const out=document.createElement('canvas');out.width=Math.round(w);out.height=Math.round(h);const sx=x*image.naturalWidth/canvas.width,sy=y*image.naturalHeight/canvas.height,sw=w*image.naturalWidth/canvas.width,sh=h*image.naturalHeight/canvas.height;out.getContext('2d').drawImage(image,sx,sy,sw,sh,0,0,out.width,out.height);image.onload=()=>{canvas.width=mask.width=out.width;canvas.height=mask.height=out.height;mctx.clearRect(0,0,mask.width,mask.height);history=[];loaded=true;drawing=false;start=null;polygon=[];empty.hidden=true;status.textContent=`잘라낸 이미지 · ${out.width}×${out.height} · 기존 마스크 초기화`;redraw();update();};image.src=out.toDataURL('image/png'); }
@@ -114,7 +115,7 @@
     fileInput.addEventListener('change',()=>loadFile(fileInput.files[0]));
     colorInput.addEventListener('input',()=>{ root.style.setProperty('--mask-color',colorInput.value); }); root.style.setProperty('--mask-color',colorInput.value);
     sizeInput.addEventListener('input',()=>sizeOut.value=`${sizeInput.value}px`);
-    canvas.addEventListener('pointerdown',e=>{ if(!loaded)return; canvas.setPointerCapture(e.pointerId); const p=point(e); if(tool==='polygon'){ if(e.detail>1)return; if(!polygon.length){snapshot(); polygon=[p]; start=p;} else if(Math.hypot(p.x-polygon[0].x,p.y-polygon[0].y)<Math.max(12,+sizeInput.value)){ finishPolygon(); } else polygon.push(p); return; } if(tool!=='crop')snapshot(); drawing=true; start=last=p; if(tool==='brush'||tool==='erase') paintLine(p,p,tool==='erase'); });
+    canvas.addEventListener('pointerdown',e=>{ if(!loaded)return; canvas.setPointerCapture(e.pointerId); const p=point(e); if(tool==='polygon'){ const now=e.timeStamp; if(now-lastDown.t<500&&Math.hypot(e.clientX-lastDown.x,e.clientY-lastDown.y)<6){lastDown.t=-1e9;return;} lastDown={t:now,x:e.clientX,y:e.clientY}; if(!polygon.length){snapshot(); polygon=[p]; start=p;} else if(Math.hypot(p.x-polygon[0].x,p.y-polygon[0].y)<Math.max(tol(),12,+sizeInput.value)){ finishPolygon(); } else polygon.push(p); return; } if(tool!=='crop')snapshot(); drawing=true; start=last=p; if(tool==='brush'||tool==='erase') paintLine(p,p,tool==='erase'); });
     canvas.addEventListener('pointermove',e=>{ if(!loaded)return; const p=point(e); if(tool==='polygon'){ if(polygon.length) redraw(p); return; } if(!drawing)return; if(tool==='brush'||tool==='erase'){ paintLine(last,p,tool==='erase');last=p;redraw(); } else redraw(p); });
     function end(e){ if(!drawing)return; const p=point(e); if(tool==='rect'){mctx.fillStyle=color();mctx.fillRect(start.x,start.y,p.x-start.x,p.y-start.y);} if(tool==='ellipse'){mctx.fillStyle=color();mctx.beginPath();mctx.ellipse((start.x+p.x)/2,(start.y+p.y)/2,Math.abs(p.x-start.x)/2,Math.abs(p.y-start.y)/2,0,0,Math.PI*2);mctx.fill();} if(tool==='crop'){const a=start;drawing=false;start=null;applyCrop(a,p);return;} drawing=false;start=null;redraw(); }
     canvas.addEventListener('pointerup',end); canvas.addEventListener('pointercancel',()=>{drawing=false;start=null;redraw();});
@@ -137,7 +138,9 @@
     });
     const stage=root.querySelector('#ip-stage'); ['dragenter','dragover'].forEach(n=>stage.addEventListener(n,e=>{e.preventDefault();})); stage.addEventListener('drop',e=>{e.preventDefault();loadFile(e.dataTransfer.files[0]);});
     document.addEventListener('paste',e=>{ const f=[...e.clipboardData.items].find(i=>i.type.startsWith('image/'))?.getAsFile(); if(f)loadFile(f); });
-    document.addEventListener('keydown',e=>{ if(e.key==='Escape'){e.preventDefault();cancelCurrentSelection();} });
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape'){e.preventDefault();cancelCurrentSelection();} if(e.key==='Enter'&&tool==='polygon'&&polygon.length>=3){e.preventDefault();finishPolygon();} });
+    const tol=()=>{const r=canvas.getBoundingClientRect();return 16*canvas.width/r.width;};   // 화면 16px 를 캔버스 px 로
+    root.querySelector('#ip-close').addEventListener('click',()=>{if(polygon.length<3){status.textContent='점을 셋 이상 찍은 뒤 닫습니다.';return;}finishPolygon();});
     update();
   })();
   </script>

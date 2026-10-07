@@ -16,7 +16,7 @@ Open the bundled editor immediately when the user wants to mark or mask part of 
 ## Preserve the workflow
 
 - Preserve file selection, drag-and-drop, clipboard paste, crop, rectangle, ellipse, polygon, brush, eraser, undo, clear, mask PNG, marked preview, and clipboard copy.
-- Close an in-progress polygon on double-click.
+- Close an in-progress polygon on double-click, the 다각형 닫기 button, or Enter.
 - Cancel only the in-progress selection when the user presses `Esc`.
 - Preserve the mask convention: the marked or white area is editable and the black area is preserved.
 - Treat **코덱스로 보내기** as copying the marked image to the clipboard. Do not download automatically.
